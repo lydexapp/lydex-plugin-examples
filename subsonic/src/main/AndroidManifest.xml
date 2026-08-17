@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Self-hosted servers are commonly plain HTTP on a LAN. -->
+    <application
+        android:label="Lydex Subsonic"
+        android:icon="@android:drawable/ic_dialog_info"
+        android:usesCleartextTraffic="true"
+        android:allowBackup="false">
+
+        <!-- No LAUNCHER activity: stream plug-ins are invisible apps, all UI
+             is reached through host-fired Intents. -->
+
+        <meta-data android:name="dev.lydex.plugin.id"              android:value="subsonic" />
+        <meta-data android:name="dev.lydex.plugin.kind"            android:value="stream" />
+        <meta-data android:name="dev.lydex.plugin.displayName"     android:value="Subsonic" />
+        <meta-data android:name="dev.lydex.plugin.protocolVersion" android:value="1" />
+        <meta-data android:name="dev.lydex.plugin.serviceClass"
+                   android:value="dev.lydex.plugins.subsonic.SubsonicProviderService" />
+
+        <receiver android:name=".DiscoveryAnchor"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="dev.lydex.intent.action.STREAM_PLUGIN" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".SubsonicProviderService"
+                 android:exported="true" />
+
+        <activity
+            android:name=".SubsonicLoginActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:label="Subsonic server" />
+    </application>
+</manifest>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:label="Lydex DSP Example"
+        android:icon="@android:drawable/ic_dialog_info"
+        android:allowBackup="false">
+
+        <!--
+          Plug-in metadata. See the Developer docs for the full contract.
+          Params: id:label:min:max:default (one slider each)
+            0 Warmth — drive of the asymmetric tanh
+            1 Trim   — output gain, 50 = unity
+        -->
+        <meta-data android:name="dev.lydex.plugin.id"          android:value="example" />
+        <meta-data android:name="dev.lydex.plugin.kind"        android:value="dsp" />
+        <meta-data android:name="dev.lydex.plugin.displayName" android:value="Example Warmth" />
+        <meta-data android:name="dev.lydex.plugin.wasmAsset"   android:value="lydex_dsp_example.wasm" />
+        <meta-data
+            android:name="dev.lydex.plugin.params"
+            android:value="0:Warmth:0:100:40,1:Trim:0:100:50" />
+        <!-- Presets: Name:id=value,… pipe-separated. -->
+        <meta-data
+            android:name="dev.lydex.plugin.presets"
+            android:value="Subtle:0=25,1=50|Rich:0=70,1=52" />
+
+        <!--
+          Discovery anchor — gives the DSP_PLUGIN intent-filter a real
+          component so PackageManager can find this APK. Never actually
+          broadcast; the host scans packages and reads the meta-data.
+        -->
+        <receiver android:name="dev.lydex.plugins.example.DiscoveryAnchor"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="dev.lydex.intent.action.DSP_PLUGIN" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

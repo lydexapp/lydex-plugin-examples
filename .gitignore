@@ -1,0 +1,15 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+
+# Rust (dsp-template)
+target/
+Cargo.lock
+
+# IDE / OS
+.idea/
+.DS_Store
+*.iml
