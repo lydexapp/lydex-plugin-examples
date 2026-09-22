@@ -214,4 +214,24 @@ interface ILydexStreamProvider {
      * carries its own sign-out.
      */
     String logout();
+
+    /**
+     * v3 (appended). Smart-playlist definitions kept by the provider, so every
+     * device of the account sees the same list. JSON envelope of
+     * SmartPlaylistList { items: [SmartPlaylistDef] }. Requires
+     * ProviderCapabilities.supportsSmartPlaylistStore; a provider without it
+     * returns UNSUPPORTED and the host keeps definitions on the device.
+     */
+    String listSmartPlaylists();
+
+    /**
+     * Create (smartPlaylistId null or empty) or replace (an id from
+     * listSmartPlaylists) one definition. rulesJson is the host's own
+     * SmartPlaylistJson; matchMode is "ALL" or "ANY". Returns the stored
+     * SmartPlaylistDef, id included.
+     */
+    String saveSmartPlaylist(String smartPlaylistId, String name, String rulesJson, String matchMode);
+
+    /** Remove one definition. Envelope payload is empty on success. */
+    String deleteSmartPlaylist(String smartPlaylistId);
 }

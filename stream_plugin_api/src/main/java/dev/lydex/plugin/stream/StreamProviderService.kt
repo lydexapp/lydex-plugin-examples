@@ -165,6 +165,35 @@ abstract class StreamProviderService : Service() {
 
     final override fun onBind(intent: Intent?): IBinder = binder
 
+    /**
+     * Stored smart-playlist definitions. Require
+     * [ProviderCapabilities.supportsSmartPlaylistStore]; the defaults refuse,
+     * and the host then keeps definitions on the device.
+     */
+    open fun onListSmartPlaylists(): SmartPlaylistList =
+        throw ProviderException(
+            StreamPluginContract.ErrorCode.UNSUPPORTED,
+            "smart playlist storage not supported",
+        )
+
+    /** Create ([smartPlaylistId] null) or replace one definition. */
+    open fun onSaveSmartPlaylist(
+        smartPlaylistId: String?,
+        name: String,
+        rulesJson: String,
+        matchMode: String,
+    ): SmartPlaylistDef =
+        throw ProviderException(
+            StreamPluginContract.ErrorCode.UNSUPPORTED,
+            "smart playlist storage not supported",
+        )
+
+    open fun onDeleteSmartPlaylist(smartPlaylistId: String): Unit =
+        throw ProviderException(
+            StreamPluginContract.ErrorCode.UNSUPPORTED,
+            "smart playlist storage not supported",
+        )
+
     private fun envelope(block: () -> org.json.JSONObject): String = try {
         ProviderResponse.ok(block())
     } catch (e: ProviderException) {
@@ -317,6 +346,27 @@ abstract class StreamProviderService : Service() {
 
         override fun logout(): String = envelope {
             onLogout()
+            org.json.JSONObject()
+        }
+
+        override fun listSmartPlaylists(): String = envelope { onListSmartPlaylists().toJson() }
+
+        override fun saveSmartPlaylist(
+            smartPlaylistId: String?,
+            name: String?,
+            rulesJson: String?,
+            matchMode: String?,
+        ): String = envelope {
+            onSaveSmartPlaylist(
+                smartPlaylistId?.takeIf { it.isNotEmpty() },
+                name.orEmpty(),
+                rulesJson.orEmpty().ifEmpty { "[]" },
+                matchMode?.takeIf { it.isNotEmpty() } ?: "ALL",
+            ).toJson()
+        }
+
+        override fun deleteSmartPlaylist(smartPlaylistId: String?): String = envelope {
+            onDeleteSmartPlaylist(smartPlaylistId.requireId("smartPlaylistId"))
             org.json.JSONObject()
         }
 

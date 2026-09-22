@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import dev.lydex.plugin.stream.ProviderException
+import dev.lydex.plugin.stream.ServerDetail
+import dev.lydex.plugin.stream.ServerInfo
 import dev.lydex.plugin.stream.StreamPluginContract.ErrorCode
 import org.json.JSONObject
 import java.io.IOException
@@ -52,6 +54,41 @@ class SubsonicApi(context: Context) {
     var isOpenSubsonic: Boolean
         get() = prefs.getBoolean(KEY_OPEN_SUBSONIC, false)
         private set(v) = prefs.edit().putBoolean(KEY_OPEN_SUBSONIC, v).apply()
+
+    /** The server's own version string, when it reports one. From [ping]. */
+    var serverVersion: String?
+        get() = prefs.getString(KEY_SERVER_VERSION, null)
+        private set(v) = prefs.edit().putString(KEY_SERVER_VERSION, v).apply()
+
+    /** Subsonic API revision the server answers, e.g. "1.16.1". From [ping]. */
+    var apiVersion: String?
+        get() = prefs.getString(KEY_API_VERSION, null)
+        private set(v) = prefs.edit().putString(KEY_API_VERSION, v).apply()
+
+    /**
+     * What the host shows in its server panel, or null when nothing is
+     * configured yet — there is no server to describe.
+     *
+     * Everything past the address comes from the last successful [ping], so a
+     * configured-but-never-reached server shows its address alone. That is
+     * the half that matters: checking or quoting the address is usually why
+     * the panel gets opened, and a self-hosted library changes machine and
+     * port far more often than a commercial service does.
+     */
+    fun serverInfo(): ServerInfo? {
+        if (serverUrl.isEmpty()) return null
+        return ServerInfo(
+            url = serverUrl,
+            name = serverType,
+            version = serverVersion,
+            details = buildList {
+                // Technical rows only. The signed-in identity is already on
+                // the host's status line, and these labels are not translated.
+                apiVersion?.let { add(ServerDetail("Subsonic API", it)) }
+                if (isOpenSubsonic) add(ServerDetail("OpenSubsonic", "yes"))
+            },
+        )
+    }
 
     val isConfigured: Boolean get() = serverUrl.isNotEmpty() && username.isNotEmpty()
 
@@ -169,6 +206,8 @@ class SubsonicApi(context: Context) {
     fun ping(): JSONObject {
         val r = call("ping")
         serverType = r.optString("type").takeIf { it.isNotEmpty() }
+        serverVersion = r.optString("serverVersion").takeIf { it.isNotEmpty() }
+        apiVersion = r.optString("version").takeIf { it.isNotEmpty() }
         isOpenSubsonic = r.optBoolean("openSubsonic", false)
         return r
     }
@@ -207,6 +246,8 @@ class SubsonicApi(context: Context) {
         private const val KEY_PASS = "password"
         private const val KEY_SERVER_TYPE = "server_type"
         private const val KEY_OPEN_SUBSONIC = "open_subsonic"
+private const val KEY_SERVER_VERSION = "server_version"
+private const val KEY_API_VERSION = "api_version"
         private const val CONNECT_TIMEOUT_MS = 8_000
         private const val READ_TIMEOUT_MS = 20_000
 

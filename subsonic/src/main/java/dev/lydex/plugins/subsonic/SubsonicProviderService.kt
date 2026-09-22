@@ -40,6 +40,7 @@ class SubsonicProviderService : StreamProviderService() {
         // No cover-upload endpoint exists anywhere in the Subsonic family;
         // the host hides the affordance rather than keeping a local override.
         supportsArtworkUpload = false,
+        server = api.serverInfo(),
     )
 
     override fun onGetAuthState(): AuthState {

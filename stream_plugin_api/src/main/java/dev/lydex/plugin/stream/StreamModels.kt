@@ -12,6 +12,66 @@ import org.json.JSONObject
  * ones. Writers may add fields freely.
  */
 
+/**
+ * One labelled line in a provider's server panel.
+ *
+ * The label is the plug-in's own wording and the host does NOT translate it,
+ * so keep these short and technical — protocol dialects, extension flags,
+ * account names. Anything the host should phrase itself belongs in a typed
+ * field instead.
+ */
+data class ServerDetail(val label: String, val value: String) {
+    fun toJson(): JSONObject = JSONObject().put("label", label).put("value", value)
+
+    companion object {
+        fun fromJson(o: JSONObject) =
+            ServerDetail(o.optString("label"), o.optString("value"))
+    }
+}
+
+/**
+ * Which server this provider is actually talking to.
+ *
+ * Optional throughout: a provider with nothing behind it omits the block, and
+ * a plug-in built against an older contract never sends one — the host then
+ * shows only what it can see for itself rather than an empty panel.
+ *
+ * It rides on [ProviderCapabilities] rather than [AuthState] because it
+ * describes the configured provider, not the session. Someone who is logged
+ * out still wants to see which address the plug-in is pointed at; that is
+ * usually the reason they went looking.
+ */
+data class ServerInfo(
+    /** Base address as configured, e.g. "http://10.0.0.241:4546". */
+    val url: String? = null,
+    /** What the server calls itself, e.g. "Lydex Stream" or "Navidrome". */
+    val name: String? = null,
+    /** Server version, when it reports one. */
+    val version: String? = null,
+    /** Extra rows, rendered in the order given. */
+    val details: List<ServerDetail> = emptyList(),
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        url?.let { put("url", it) }
+        name?.let { put("name", it) }
+        version?.let { put("version", it) }
+        if (details.isNotEmpty()) {
+            put("details", JSONArray(details.map { it.toJson() }))
+        }
+    }
+
+    companion object {
+        fun fromJson(o: JSONObject): ServerInfo = ServerInfo(
+            url = o.optString("url").takeIf { it.isNotEmpty() },
+            name = o.optString("name").takeIf { it.isNotEmpty() },
+            version = o.optString("version").takeIf { it.isNotEmpty() },
+            details = o.optJSONArray("details")?.let { arr ->
+                (0 until arr.length()).map { ServerDetail.fromJson(arr.getJSONObject(it)) }
+            } ?: emptyList(),
+        )
+    }
+}
+
 data class ProviderCapabilities(
     /** Delivery tiers, [StreamPluginContract.Tier] values. */
     val tiers: List<String>,
@@ -65,6 +125,18 @@ data class ProviderCapabilities(
      * the affordance follows the account, like [supportsArtworkUpload].
      */
     val supportsLoudnessAnalysis: Boolean = false,
+    /**
+     * v3 (appended). The provider stores smart-playlist definitions
+     * (listSmartPlaylists / saveSmartPlaylist / deleteSmartPlaylist), so they
+     * follow the account across devices instead of living in one phone's
+     * preferences. Reported per session like the playlist right it is.
+     */
+    val supportsSmartPlaylistStore: Boolean = false,
+    /**
+     * v3 (appended). Where this provider points. Null when the plug-in has no
+     * server, or was built before this field existed.
+     */
+    val server: ServerInfo? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("tiers", JSONArray(tiers))
@@ -77,6 +149,8 @@ data class ProviderCapabilities(
         put("supportsSmartPlaylist", supportsSmartPlaylist)
         put("supportsRevisions", supportsRevisions)
         put("supportsLoudnessAnalysis", supportsLoudnessAnalysis)
+        put("supportsSmartPlaylistStore", supportsSmartPlaylistStore)
+        server?.let { put("server", it.toJson()) }
     }
 
     companion object {
@@ -93,7 +167,46 @@ data class ProviderCapabilities(
             supportsSmartPlaylist = o.optBoolean("supportsSmartPlaylist", false),
             supportsRevisions = o.optBoolean("supportsRevisions", false),
             supportsLoudnessAnalysis = o.optBoolean("supportsLoudnessAnalysis", false),
+            supportsSmartPlaylistStore = o.optBoolean("supportsSmartPlaylistStore", false),
+            server = o.optJSONObject("server")?.let(ServerInfo::fromJson),
         )
+    }
+}
+
+/**
+ * One stored smart-playlist definition. [rulesJson] is the host's
+ * SmartPlaylistJson, opaque to the provider; [matchMode] is "ALL" or "ANY".
+ */
+data class SmartPlaylistDef(
+    val id: String,
+    val name: String,
+    val rulesJson: String,
+    val matchMode: String = "ALL",
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("id", id)
+        .put("name", name)
+        .put("rulesJson", rulesJson)
+        .put("matchMode", matchMode)
+
+    companion object {
+        fun fromJson(o: JSONObject): SmartPlaylistDef = SmartPlaylistDef(
+            id = o.optString("id"),
+            name = o.optString("name"),
+            rulesJson = o.optString("rulesJson", "[]"),
+            matchMode = o.optString("matchMode", "ALL").ifEmpty { "ALL" },
+        )
+    }
+}
+
+data class SmartPlaylistList(val items: List<SmartPlaylistDef>) {
+    fun toJson(): JSONObject = JSONObject().put("items", JSONArray().apply { items.forEach { put(it.toJson()) } })
+
+    companion object {
+        fun fromJson(o: JSONObject): SmartPlaylistList {
+            val arr = o.optJSONArray("items") ?: JSONArray()
+            return SmartPlaylistList((0 until arr.length()).map { SmartPlaylistDef.fromJson(arr.getJSONObject(it)) })
+        }
     }
 }
 
